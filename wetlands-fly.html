@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wetlands 3D Flyover (Fixed)</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.11.1/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.11.1/mapbox-gl.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #fly {
+      position: absolute;
+      z-index: 1;
+      top: 10px;
+      left: 10px;
+      background-color: #ee8a65;
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<button id="fly">Fly to Next Wetland</button>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiYXJpYWZhcnNpIiwiYSI6ImNtYTl1NG0xdDF4ZGwyaXB6cDlzZHMydGQifQ.v55wT7rg-3kwEqPJSafhCA';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/satellite-streets-v12',
+  center: [54, 30],
+  zoom: 1.5,
+  pitch: 0,
+  bearing: 0
+});
+
+const locations = [
+  {
+    name: "Hamoun Wetlands",
+    center: [61.85, 31.1], // Updated coordinates
+    zoom: 9.5,
+    pitch: 75,
+    bearing: 60
+  },
+  {
+    name: "Mesopotamian Marshes",
+    center: [47.2, 31.1],
+    zoom: 9.5,
+    pitch: 75,
+    bearing: -60
+  }
+];
+
+let current = -1;
+
+map.on('style.load', () => {
+  map.addSource('mapbox-dem', {
+    type: 'raster-dem',
+    url: 'mapbox://mapbox.terrain-rgb',
+    tileSize: 512,
+    maxzoom: 14
+  });
+
+  map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
+
+  map.setFog({
+    color: 'rgba(186,210,235,0.6)',
+    'high-color': 'rgb(36,92,223)',
+    'horizon-blend': 0.5,
+    'space-color': '#000000',
+    'star-intensity': 0.2
+  });
+
+  map.getStyle().layers.forEach(layer => {
+    if (layer.type === 'symbol') {
+      map.setLayoutProperty(layer.id, 'visibility', 'none');
+    }
+  });
+
+  if (map.getLayer('country-label')) {
+    map.setLayoutProperty('country-label', 'visibility', 'visible');
+  }
+
+  map.addSource('wetlands', {
+    type: 'geojson',
+    data: {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { name: 'Hamoun Wetlands' },
+          geometry: { type: 'Point', coordinates: [61.85, 31.1] } // Updated label position
+        },
+        {
+          type: 'Feature',
+          properties: { name: 'Mesopotamian Marshes' },
+          geometry: { type: 'Point', coordinates: [47.2, 31.1] }
+        }
+      ]
+    }
+  });
+
+  map.addLayer({
+    id: 'wetlands-labels',
+    type: 'symbol',
+    source: 'wetlands',
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-size': 16,
+      'text-anchor': 'top',
+      'text-offset': [0, 1]
+    },
+    paint: {
+      'text-color': '#ffffff',
+      'text-halo-color': '#000000',
+      'text-halo-width': 1.2
+    }
+  });
+});
+
+document.getElementById('fly').addEventListener('click', () => {
+  current = (current + 1) % locations.length;
+  const target = locations[current];
+
+  map.flyTo({
+    center: target.center,
+    zoom: target.zoom,
+    pitch: target.pitch,
+    bearing: target.bearing,
+    duration: 10000,
+    essential: true
+  });
+
+  setTimeout(() => {
+    map.easeTo({
+      center: target.center,
+      bearing: target.bearing + 180,
+      duration: 10000,
+      pitch: target.pitch
+    });
+  }, 10500);
+});
+</script>
+</body>
+</html>
